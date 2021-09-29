@@ -11,3 +11,17 @@ Save as a YAML file:
 
 ## Step 3
 ![image](https://user-images.githubusercontent.com/13639658/135361816-d2a87b95-7a6c-4561-9351-e909a0747482.png)
+
+## Prereqs
+```
+pip install pyyaml
+```
+
+## Usage
+
+```
+set input_file=sli.yaml
+# Optional
+# set debug=true
+python app.py
+```
