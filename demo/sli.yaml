@@ -1,0 +1,7 @@
+---
+spec_version: '1.0'
+indicators:
+  sli1: 'builtin:host.cpu.usage:splitBy("dt.entity.host"):avg:auto:sort(value(avg,descending)):limit(100)'
+  sli2: builtin:host.cpu.usage:splitBy("dt.entity.host"):avg:auto:sort(value(avg,descending)):limit(100)
+  sli3: "builtin:host.cpu.usage:splitBy(\"dt.entity.host\"):avg:auto:sort(value(avg,descending)):limit(100)"
+  sli4: 'trivy.vulnerabilities.CRITICAL:splitBy(image,tag):avg:auto:sort(value(avg,descending)):limit(10)'
