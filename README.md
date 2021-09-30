@@ -25,3 +25,10 @@ set input_file=sli.yaml
 # set debug=true
 python app.py
 ```
+
+## TODO List
+1. ✅ Support `limit` (done)
+2. ✅ Support `splitBy` (done)
+3. Support filtering
+4. Add additional params for dashboard name etc
+5. Dockerise app
