@@ -33,7 +33,8 @@ def remove_quotes_from_list(list):
       item = item.replace('"','')
     new_list.append(item)
   
-  print(f'Returning cleaned list: {new_list}')
+  if DEBUG:
+    print(f'Returning cleaned list: {new_list}')
   return new_list
 
 def readSLIFile(filename):
@@ -90,14 +91,15 @@ def generateDashboard(sli_file):
     trimmed_sli_def = sli_def[:sli_def.index(':splitBy')]
     
     # Get limit value
-    limit_value_string = sli_def[sli_def.index(':limit(')+7:-1]
-    limit_value = int(limit_value_string)
+    match = re.search('limit\((.*?)\)',sli_def) # Get values between :limit(...)
+    limit_value_string = ""
+    limit_value = 10 # Default to 10
+    if match != None:
+      limit_value_string = match.group(1)
+      limit_value = int(limit_value_string)
 
     # Get splitBy values
-    print(sli_def)
     match = re.search('splitBy\((.*?)\)',sli_def) # Get values between :splitBy(...)
-    print(match)
-    print(f'Group 1 Match: {match.group(1)}')
     # match.group(1) will be an empty string if the SLI has splitBy()
     # Otherwise it'll be a CSV of split values
     split_list = []
@@ -111,7 +113,7 @@ def generateDashboard(sli_file):
       print(f'SLI Name: {sli_name}')
       print(f'Full SLI Definition (untrimmed): {sli_def}')
       print(f'Trimmed SLI Definition: {trimmed_sli_def}')
-      print(f'Limit Value: {limit_value_string}')
+      print(f'Limit Value: {limit_value}')
       print(f'Split List: {split_list}')
       print('-----')
     
@@ -228,4 +230,4 @@ if DEBUG:
 sli_file = readSLIFile(sli_file_name)
 dashboardJSON = generateDashboard(sli_file)
 
-print(dashboardJSON)
+#print(dashboardJSON)
