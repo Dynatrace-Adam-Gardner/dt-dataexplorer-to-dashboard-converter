@@ -6,10 +6,11 @@ Take the output of Dynatrace Data Explorer code, save as code and transform to a
 ![image](https://user-images.githubusercontent.com/13639658/135363280-ed62bfc5-6400-4a1d-a351-aa4b45861075.png)
 
 ## Step 2
-Save as a YAML file:
+Save your SLIs as a YAML file:
 ![image](https://user-images.githubusercontent.com/13639658/135363242-33ac80ba-a5b0-454e-95f4-ca2cd6be9012.png)
 
 ## Step 3
+Dashboard JSON will be printed. Tiles will be automatically sized and spaced.
 ![image](https://user-images.githubusercontent.com/13639658/135363326-7d7c2693-e054-42ac-b217-2f5fd5c31012.png)
 
 ## Prereqs
