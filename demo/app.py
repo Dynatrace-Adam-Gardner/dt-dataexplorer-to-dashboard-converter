@@ -6,7 +6,7 @@ import re
 # TODO
 # Support limit (DONE)
 # Support splitBy (DONE)
-# Support filters
+# Support filters (partial - supports a single filter)
 
 #
 # Prerequisites
@@ -29,14 +29,21 @@ def remove_quotes_from_list(list):
   new_list = []
   for item in list:
     if '"' in item:
-      # Found a quotation in list item. Removing
-      item = item.replace('"','')
+      remove_quotes_from_string(item)
     new_list.append(item)
   
   if DEBUG:
     print(f'Returning cleaned list: {new_list}')
   return new_list
 
+def remove_quotes_from_string(item):
+  if '"' in item:
+    item = item.replace('"','')
+  
+  if DEBUG:
+    print(f'Returning cleaned string: {item}')
+  return item
+    
 def readSLIFile(filename):
   sli_file = ""
   with open(filename, "r") as stream:
@@ -86,28 +93,55 @@ def generateDashboard(sli_file):
     sli_def = slis.get(sli)
 
     # sli_def comes in as 'trivy.vulnerabilities.CRITICAL:splitBy():avg:auto:sort(value(avg,descending)):limit(100)'
+    # or with filter() first
     # or 'builtin:apps.web.actionCount.category:splitBy():avg:auto:sort(value(avg,descending)):limit(100)'
     # Trim to :splitBy
-    trimmed_sli_def = sli_def[:sli_def.index(':splitBy')]
+    # So get index of :splitBy and index of :filter
+    # Whichever is lower, use that
+    trim_index = -1
+    split_by_index = sli_def.index(':splitBy')
+    filter_by_index = sli_def.index(':filter')
+    print(f'Split By Index: {split_by_index}')
+    print(f'Filter By Index: {filter_by_index}')
+    if split_by_index < filter_by_index:
+      if DEBUG:
+        print('split_by_index is lower than filter_by_index (splitBy() comes first in SLI) so using split_by_index')
+      trim_index = split_by_index
+    else:
+      trim_index = filter_by_index
+      if DEBUG:
+        print('filter_by_index is lower than split_by_index (filter(...) comes first in SLI) so using filter_by_index')
+    
+    if DEBUG:
+      print(f'Split By Index: {split_by_index}')
+      print(f'Filter By Index: {filter_by_index}')
+
+    trimmed_sli_def = sli_def[:trim_index]
     
     # Get limit value
-    match = re.search('limit\((.*?)\)',sli_def) # Get values between :limit(...)
+    limit_match = re.search('limit\((.*?)\)',sli_def) # Get values between :limit(...)
     limit_value_string = ""
     limit_value = 10 # Default to 10
-    if match != None:
-      limit_value_string = match.group(1)
+    if limit_match != None:
+      limit_value_string = limit_match.group(1)
       limit_value = int(limit_value_string)
 
     # Get splitBy values
-    match = re.search('splitBy\((.*?)\)',sli_def) # Get values between :splitBy(...)
-    # match.group(1) will be an empty string if the SLI has splitBy()
+    split_by_match = re.search('splitBy\((.*?)\)',sli_def) # Get values between :splitBy(...)
+    # split_by_match.group(1) will be an empty string if the SLI has splitBy()
     # Otherwise it'll be a CSV of split values
     split_list = []
-    if match.group(1) != "":
-      split_list = match.group(1).split(',')
+    if split_by_match != None and split_by_match.group(1) != "":
+      split_list = split_by_match.group(1).split(',')
 
     split_list = remove_quotes_from_list(split_list)
     print(f'Split List: {split_list}')
+
+    # Get Filter
+    filter = ""
+    filter_match = re.search('filter\(([^:]+)', sli_def)
+    if filter_match != None and filter_match.group(1) != "":
+      filter = filter_match.group(1)
 
     if DEBUG:
       print(f'SLI Name: {sli_name}')
@@ -115,6 +149,7 @@ def generateDashboard(sli_file):
       print(f'Trimmed SLI Definition: {trimmed_sli_def}')
       print(f'Limit Value: {limit_value}')
       print(f'Split List: {split_list}')
+      if filter != "": print(f'Filter: {filter}')
       print('-----')
     
     tile_pixel_width = TILE_WIDTH*TILE_PIXELS
@@ -147,12 +182,55 @@ def generateDashboard(sli_file):
 
     query = Object()
     query.id = "A"
+    print(f'Printing Trimmed SLI Def: {trimmed_sli_def}')
     query.metric = trimmed_sli_def
     query.spaceAggregation = "AVG"
     query.timeAggregation = "DEFAULT"
     query.splitBy = []
     query.filterBy = Object()
+
+    # Get filter condition
+    # This is one of [AND, OR, NOT] case sensitive
+    filterOperatorUppercase = ""
+    if filter != "":
+      query.filterBy.filterOperator = ""
+      filterOperatorUppercase = filter[:filter.index('(')].upper()
+      print(f'Filter Operator Uppercase:  {filterOperatorUppercase}')
+      query.filterBy.filterOperator = filterOperatorUppercase
     query.filterBy.nestedFilters = []
+    if filter != "":
+      nestedFilter = Object()
+      query.filterBy.nestedFilters.append(nestedFilter)
+      nestedFilter.filterType = "DIMENSION"
+      nestedFilter.filterOperator = "OR"
+
+      nestedFilter.criteria = []
+      nested_filter_criteria = Object()
+      nestedFilter.criteria.append(nested_filter_criteria)
+
+
+      # Get filter value eg. 'tag' in tag=nginx
+      # Assumes tag filter is equals ie. eq
+      filter_value = ""
+      filter_value = filter[filter.index('eq(')+3:filter.index(',')]
+      if filter_value != "":
+        print(f'Filter Value: {filter_value}')
+
+        filter_value_match = re.search(filter_value+',([^)]+)',filter)
+        if filter_value_match != None and filter_value_match.group(1) != "":
+          # Get filter criteria value eg. 'nginx' in tag=nginx
+          filter_criteria_value = remove_quotes_from_string(filter_value_match.group(1))
+          print(f'Filter Criteria Value: {filter_criteria_value}')
+          nested_filter_criteria.value = filter_criteria_value
+          nested_filter_criteria.evaluator = "EQ" # Assumes equals...
+
+
+      nestedFilter.filter = filter_value
+    # match.group(1) will be an empty string if the SLI has splitBy()
+    # Otherwise it'll be a CSV of split values
+    split_list = []
+    if split_by_match != None and split_by_match.group(1) != "":
+      split_list = split_by_match.group(1).split(',')
     query.filterBy.criteria = []
     query.enabled = True
     query.limit = limit_value
@@ -230,4 +308,4 @@ if DEBUG:
 sli_file = readSLIFile(sli_file_name)
 dashboardJSON = generateDashboard(sli_file)
 
-#print(dashboardJSON)
+print(dashboardJSON)
