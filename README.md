@@ -30,6 +30,6 @@ python app.py
 ## TODO List
 1. ✅ Support `limit` (done)
 2. ✅ Support `splitBy` (done)
-3. Support filtering
+3. Support filtering (in progress see `feat/filter-support` branch)
 4. Add additional params for dashboard name etc
 5. Dockerise app
